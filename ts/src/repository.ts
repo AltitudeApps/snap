@@ -145,11 +145,17 @@ function parseEditScript(value: JsonValue): EditScript {
   for (let index = 1; index < script.length; index += 1) {
     const previous = script[index - 1] as EditOperation;
     const current = script[index] as EditOperation;
-    const sameKind =
-      (isRetain(previous) && isRetain(current)) ||
-      (isDelete(previous) && isDelete(current)) ||
-      (isInsert(previous) && isInsert(current));
-    if (sameKind) throw new SnapError("edit script has adjacent operations of one kind");
+    const kind =
+      isRetain(previous) && isRetain(current)
+        ? "retain"
+        : isDelete(previous) && isDelete(current)
+          ? "delete"
+          : isInsert(previous) && isInsert(current)
+            ? "insert"
+            : undefined;
+    if (kind !== undefined) {
+      throw new SnapError("edit script has adjacent " + kind + " operations");
+    }
   }
   return script;
 }
@@ -295,7 +301,7 @@ export function orderPatches(patches: readonly Patch[]): Patch[] {
   while (remaining.size > 0) {
     const ready = [...remaining].filter((patch) => isContainedBy(patch.base, integrated));
     if (ready.length === 0) {
-      throw new SnapError("history has a cycle or a missing dependency");
+      throw new SnapError("cyclic or incomplete patch history");
     }
     ready.sort(
       (left, right) =>
@@ -349,8 +355,12 @@ function requireTextContent(bytes: Uint8Array, path: string): string {
   return text;
 }
 
-/** Materializes a version by replaying its selected patches in canonical order. */
-export function materialize(repository: Repository, version: Version): Tree {
+/**
+ * Replays a version by integrating its selected patches in canonical order.
+ * This is the pure primitive: it performs no validation, so validation itself
+ * can use it without recursing.
+ */
+export function replay(repository: Repository, version: Version): Tree {
   const tree = new Map<string, Uint8Array>();
   for (const patch of orderPatches(selectPatches(repository, version))) {
     for (const change of patch.changes) applyChange(tree, change);

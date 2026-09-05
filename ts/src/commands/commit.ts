@@ -6,7 +6,7 @@ import {
   MAX_MESSAGE_BYTES,
   dotOf,
   isValidMessage,
-  materialize,
+  replay,
   messageByteLength,
   type Patch,
 } from "../repository.js";
@@ -32,7 +32,7 @@ export function commit(
     throw new SnapError("invalid commit message");
   }
 
-  const current = materialize(repository, repository.frontier);
+  const current = replay(repository, repository.frontier);
   const working = scanWorkingTree(workspace.root);
   requirePrefixFree(working.keys());
 

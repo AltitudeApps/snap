@@ -7,6 +7,7 @@ import {
   serializeRepository,
   type Repository,
 } from "./repository.js";
+import { validateRepository } from "./validate.js";
 import { METADATA_DIRECTORY, type Tree } from "./tree.js";
 
 export const REPOSITORY_FILE = "repository.json";
@@ -51,7 +52,9 @@ export function readRepository(workspace: Workspace): Repository {
   } catch {
     throw new SnapError("not a Snap repository");
   }
-  return parseRepository(text);
+  const repository = parseRepository(text);
+  validateRepository(repository);
+  return repository;
 }
 
 /**

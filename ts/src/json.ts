@@ -256,9 +256,13 @@ export function asInteger(value: JsonValue, what: string): number {
 }
 
 export function asPositiveInteger(value: JsonValue, what: string): number {
-  const integer = asInteger(value, what);
-  if (integer <= 0) throw new SnapError(what + " must be a positive safe integer");
-  return integer;
+  const message = what + " must be a positive safe integer";
+  if (!isJsonNumber(value)) throw new SnapError(message);
+  if (!/^(?:0|[1-9][0-9]*)$/.test(value.source)) throw new SnapError(message);
+  if (!Number.isSafeInteger(value.value) || value.value <= 0) {
+    throw new SnapError(message);
+  }
+  return value.value;
 }
 
 export function asString(value: JsonValue, what: string): string {

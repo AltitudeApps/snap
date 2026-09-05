@@ -27,7 +27,7 @@ export function isValidPath(path: string): boolean {
 }
 
 export function requirePath(path: string): string {
-  if (!isValidPath(path)) throw new SnapError("invalid path: " + path);
+  if (!isValidPath(path)) throw new SnapError("path is invalid: " + path);
   return path;
 }
 
@@ -46,7 +46,7 @@ export function requirePrefixFree(paths: Iterable<string>): void {
     for (let count = 1; count < segments.length; count += 1) {
       const ancestor = segments.slice(0, count).join("/");
       if (all.has(ancestor)) {
-        throw new SnapError("path " + path + " conflicts with file " + ancestor);
+        throw new SnapError("tree paths conflict: " + ancestor + " and " + path);
       }
     }
   }

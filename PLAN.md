@@ -330,9 +330,15 @@ Cheap, parallel, and blocking other work — run these first:
 To be resolved against the acceptance suite rather than by guesswork, before the
 affected milestone begins.
 
-1. **Is `1.0` a non-integer?** §4.1 makes non-integer numbers an error, but
-   JavaScript parses `1.0` to the integer `1`. Current intent is to reject it by
-   inspecting the raw numeric token. Confirm against test 23 before M2.
+1. ~~**Is `1.0` a non-integer?**~~ **Resolved at M2: not pinned; rejecting.**
+   A recon pass over test 23 found the suite silent on the question. Its only
+   decimal literal is `1.5`, whose *value* is non-integral, so it never
+   exercises the integral-value/non-integer-spelling case at all; no `N.0`,
+   scientific-notation or `-0` literal appears anywhere in the file. Snap
+   therefore rejects `1.0` and `1e2` by inspecting the raw numeric token, on
+   the reading that §4.1's "non-integer numbers" refers to spelling, since the
+   parsed value carries no other evidence. Nothing in the suite depends on the
+   choice either way.
 2. **§6.2 rule 3 requires `B`, `C` and `T` to all be text.** A binary base with
    text current and target content therefore falls through to §6.4. Confirm
    against tests 10 and 22 before M3.

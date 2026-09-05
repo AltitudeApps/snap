@@ -1,7 +1,7 @@
 import { compareBytes } from "../bytes.js";
 import type { DiffCompare } from "../cli.js";
 import type { Output } from "../presentation.js";
-import { materialize, requireKnownVersion } from "../repository.js";
+import { replay, requireKnownVersion } from "../repository.js";
 import { asText, diffTokens, isDelete, isInsert, isRetain, tokenize } from "../text.js";
 import type { Tree } from "../tree.js";
 import { parseVersion } from "../version.js";
@@ -103,7 +103,7 @@ export function diff(cwd: string, compare: DiffCompare | undefined): Output {
   const repository = readRepository(workspace);
 
   if (compare === undefined) {
-    const current = materialize(repository, repository.frontier);
+    const current = replay(repository, repository.frontier);
     const working = scanWorkingTree(workspace.root);
     return { kind: "diff", lines: renderTreeDiff(current, working) };
   }
@@ -116,8 +116,8 @@ export function diff(cwd: string, compare: DiffCompare | undefined): Output {
   return {
     kind: "diff",
     lines: renderTreeDiff(
-      materialize(repository, oldVersion),
-      materialize(repository, newVersion),
+      replay(repository, oldVersion),
+      replay(repository, newVersion),
     ),
   };
 }

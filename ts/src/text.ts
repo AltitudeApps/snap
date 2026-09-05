@@ -160,7 +160,7 @@ export function applyEdit(oldTokens: readonly string[], script: EditScript): str
     }
   }
   if (index !== oldTokens.length) {
-    throw new SnapError("edit script does not consume all old content");
+    throw new SnapError("edit script does not consume old content");
   }
   requireCanonicalTokens(result);
   return result;
