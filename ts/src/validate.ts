@@ -1,15 +1,7 @@
 import { bytesEqual, compareBytes } from "./bytes.js";
 import { SnapError } from "./errors.js";
-import {
-  applyChange,
-  dotOf,
-  orderPatches,
-  replay,
-  selectPatches,
-  type Change,
-  type Patch,
-  type Repository,
-} from "./repository.js";
+import { dotOf, type Change, type Patch, type Repository } from "./repository.js";
+import { applyChange, orderPatches, replay } from "./replay.js";
 import { requirePrefixFree } from "./tree.js";
 import { revisionOf } from "./version.js";
 

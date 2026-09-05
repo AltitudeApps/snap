@@ -1,7 +1,7 @@
 import { compareBytes } from "../bytes.js";
 import type { DiffCompare } from "../cli.js";
 import type { Output } from "../presentation.js";
-import { replay, requireKnownVersion } from "../repository.js";
+import { replay, requireKnownVersion } from "../replay.js";
 import { asText, diffTokens, isDelete, isInsert, isRetain, tokenize } from "../text.js";
 import type { Tree } from "../tree.js";
 import { parseVersion } from "../version.js";

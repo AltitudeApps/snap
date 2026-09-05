@@ -339,12 +339,17 @@ affected milestone begins.
    the reading that §4.1's "non-integer numbers" refers to spelling, since the
    parsed value carries no other evidence. Nothing in the suite depends on the
    choice either way.
-2. **§6.2 rule 3 requires `B`, `C` and `T` to all be text.** A binary base with
-   text current and target content therefore falls through to §6.4. Confirm
-   against tests 10 and 22 before M3.
-3. **Aggregate context edit scope.** `Q = diff(B, C)` is understood as the diff
-   of the token sequences of that single path, not a tree-wide construct.
-   Confirm against test 18 before M3.
+2. ~~**§6.2 rule 3 requires `B`, `C` and `T` to all be text.**~~ **Resolved at
+   M3: not pinned; falling through to §6.4.** Tests 10 and 22 never construct a
+   text-ness mismatch between `B`, `C` and `T` — test 22 and test 18 are
+   entirely text, and test 10's binary cases differ in `C` or `T`, never in `B`
+   alone. A binary base with text current and target content therefore reaches
+   §6.4 rule 6 (`put-wins`) by choice rather than by demonstration.
+3. ~~**Aggregate context edit scope.**~~ **Resolved at M3: not pinned; per
+   path.** Test 18 touches exactly one path (`story.txt`) in every branch and
+   every association order, so a tree-wide reading of `Q = diff(B, C)` and a
+   per-path one necessarily coincide there. Test 22 is likewise single-path.
+   Snap computes `Q` over the token sequences of the one path being resolved.
 
 ## 8. Housekeeping
 

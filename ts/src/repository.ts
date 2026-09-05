@@ -12,24 +12,17 @@ import {
   type JsonValue,
 } from "./json.js";
 import {
-  applyEdit,
-  asText,
-  detokenize,
   isDelete,
   isInsert,
   isRetain,
-  tokenize,
   type EditOperation,
   type EditScript,
 } from "./text.js";
-import { requirePath, requirePrefixFree, type Tree } from "./tree.js";
+import { requirePath } from "./tree.js";
 import {
-  compareSnapOrder,
   components,
-  formatVersion,
   isValidContributorId,
   makeVersion,
-  revisionOf,
   withRevision,
   type Version,
 } from "./version.js";
@@ -266,128 +259,6 @@ export function serializeRepository(repository: Repository): string {
     })),
   };
   return JSON.stringify(value, null, 2) + "\n";
-}
-
-// ---------------------------------------------------------------------------
-// Selection and replay
-// ---------------------------------------------------------------------------
-
-/** §4.1. The patches selected by a version: every `(c, n)` with `n <= V[c]`. */
-export function selectPatches(repository: Repository, version: Version): Patch[] {
-  return repository.patches.filter(
-    (patch) => patch.revision <= revisionOf(version, patch.author),
-  );
-}
-
-function isContainedBy(base: Version, integrated: ReadonlySet<string>): boolean {
-  for (const [id, revision] of base) {
-    for (let step = 1; step <= revision; step += 1) {
-      if (!integrated.has(id + "->" + String(step))) return false;
-    }
-  }
-  return true;
-}
-
-/**
- * §6.1. Repeatedly integrate the least ready patch, ordered by Snap order of
- * result version, then author bytes, then revision. This puts causal
- * dependencies before concurrent patches.
- */
-export function orderPatches(patches: readonly Patch[]): Patch[] {
-  const remaining = new Set(patches);
-  const integrated = new Set<string>();
-  const ordered: Patch[] = [];
-
-  while (remaining.size > 0) {
-    const ready = [...remaining].filter((patch) => isContainedBy(patch.base, integrated));
-    if (ready.length === 0) {
-      throw new SnapError("cyclic or incomplete patch history");
-    }
-    ready.sort(
-      (left, right) =>
-        compareSnapOrder(patchResult(left), patchResult(right)) ||
-        compareBytes(left.author, right.author) ||
-        left.revision - right.revision,
-    );
-    const next = ready[0] as Patch;
-    remaining.delete(next);
-    integrated.add(dotOf(next));
-    ordered.push(next);
-  }
-  return ordered;
-}
-
-/**
- * Applies one change to a tree as authored, against that tree exactly (§4.3).
- * Concurrent integration rules are M3's concern; a linear history always
- * reaches this path because the current tree equals the patch's base.
- */
-export function applyChange(tree: Map<string, Uint8Array>, change: Change): void {
-  const existing = tree.get(change.path);
-  switch (change.type) {
-    case "delete": {
-      if (existing === undefined) {
-        throw new SnapError("delete of absent path: " + change.path);
-      }
-      tree.delete(change.path);
-      return;
-    }
-    case "put": {
-      tree.set(change.path, change.content);
-      return;
-    }
-    case "text": {
-      const oldTokens =
-        existing === undefined
-          ? []
-          : tokenize(requireTextContent(existing, change.path));
-      tree.set(change.path, detokenize(applyEdit(oldTokens, change.edit)));
-      return;
-    }
-  }
-}
-
-function requireTextContent(bytes: Uint8Array, path: string): string {
-  const text = asText(bytes);
-  if (text === undefined) {
-    throw new SnapError("text change applied to non-text path: " + path);
-  }
-  return text;
-}
-
-/**
- * Replays a version by integrating its selected patches in canonical order.
- * This is the pure primitive: it performs no validation, so validation itself
- * can use it without recursing.
- */
-export function replay(repository: Repository, version: Version): Tree {
-  const tree = new Map<string, Uint8Array>();
-  for (const patch of orderPatches(selectPatches(repository, version))) {
-    for (const change of patch.changes) applyChange(tree, change);
-  }
-  requirePrefixFree(tree.keys());
-  return tree;
-}
-
-/**
- * §4.1. A version is known when every patch it selects exists and that set
- * contains the complete base of every selected patch.
- */
-export function isKnownVersion(repository: Repository, version: Version): boolean {
-  const selected = selectPatches(repository, version);
-  const dots = new Set(selected.map(dotOf));
-  for (const [id, revision] of version) {
-    for (let step = 1; step <= revision; step += 1) {
-      if (!dots.has(id + "->" + String(step))) return false;
-    }
-  }
-  return selected.every((patch) => isContainedBy(patch.base, dots));
-}
-
-export function requireKnownVersion(repository: Repository, version: Version): void {
-  if (!isKnownVersion(repository, version)) {
-    throw new SnapError("unknown version: " + formatVersion(version));
-  }
 }
 
 export function messageByteLength(message: string): number {

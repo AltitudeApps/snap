@@ -1,5 +1,6 @@
 import type { LogEntry, Output } from "../presentation.js";
-import { orderPatches, patchResult, selectPatches } from "../repository.js";
+import { patchResult } from "../repository.js";
+import { orderPatches, selectPatches } from "../replay.js";
 import { formatVersion } from "../version.js";
 import { locateWorkspace, readRepository } from "../workspace.js";
 

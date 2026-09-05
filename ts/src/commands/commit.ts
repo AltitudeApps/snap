@@ -6,10 +6,10 @@ import {
   MAX_MESSAGE_BYTES,
   dotOf,
   isValidMessage,
-  replay,
   messageByteLength,
   type Patch,
 } from "../repository.js";
+import { replay } from "../replay.js";
 import { requirePrefixFree } from "../tree.js";
 import { MAX_REVISION, formatVersion, revisionOf, withRevision } from "../version.js";
 import { locateWorkspace, readRepository, scanWorkingTree, writeRepository } from "../workspace.js";

@@ -5,6 +5,7 @@ import { config } from "./commands/config.js";
 import { diff } from "./commands/diff.js";
 import { init } from "./commands/init.js";
 import { log } from "./commands/log.js";
+import { merge } from "./commands/merge.js";
 import { status } from "./commands/status.js";
 import {
   PLAIN,
@@ -45,6 +46,8 @@ function execute(command: Command, cwd: string): CommandResult {
       return { output: commit(cwd, env, command.message), warnings: [] };
     case "diff":
       return { output: diff(cwd, command.compare), warnings: [] };
+    case "merge":
+      return merge(cwd, command.repository);
     default:
       notImplemented(command);
   }

@@ -1,5 +1,5 @@
 import type { Output } from "../presentation.js";
-import { replay } from "../repository.js";
+import { replay } from "../replay.js";
 import { formatVersion } from "../version.js";
 import { treeChanges } from "../worktree.js";
 import { locateWorkspace, readRepository, scanWorkingTree } from "../workspace.js";
