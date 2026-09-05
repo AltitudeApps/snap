@@ -10,7 +10,6 @@ import {
   type Patch,
 } from "../repository.js";
 import { replay } from "../replay.js";
-import { requirePrefixFree } from "../tree.js";
 import { MAX_REVISION, formatVersion, revisionOf, withRevision } from "../version.js";
 import { locateWorkspace, readRepository, scanWorkingTree, writeRepository } from "../workspace.js";
 
@@ -26,15 +25,19 @@ export function commit(
 ): Output {
   const workspace = locateWorkspace(cwd);
   const repository = readRepository(workspace);
-  const author = requireContributor(workspace, env);
 
+  // The message is the command's own argument and needs neither configuration
+  // nor a scan, so it is judged before the identity requirement. §7.5 pins no
+  // order here, but test 14 pins the analogous pair for revert — an unknown
+  // version outranks a missing contributor — and commit follows that shape.
   if (!isValidMessage(message) || messageByteLength(message) > MAX_MESSAGE_BYTES) {
     throw new SnapError("invalid commit message");
   }
 
+  const author = requireContributor(workspace, env);
+
   const current = replay(repository, repository.frontier);
   const working = scanWorkingTree(workspace.root);
-  requirePrefixFree(working.keys());
 
   const changes = deriveChanges(current, working);
   if (changes.length === 0) throw new SnapError("working tree is clean");

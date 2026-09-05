@@ -17,6 +17,11 @@ function exists(path: string): boolean {
  * SPEC.md §6.2. Installation removes files that block required directories,
  * creates required directories, writes target files, and removes newly empty
  * directories, so the filesystem represents exactly the target path/byte map.
+ *
+ * Callers must have scanned the working tree and found it clean first. That
+ * scan is what rejects symlinks and other unsupported entries (§10), and this
+ * function relies on it: `statSync` here would follow a link rather than
+ * report it, and a file in neither `current` nor `target` would survive.
  */
 export function installTree(root: string, current: Tree, target: Tree): void {
   for (const path of current.keys()) {

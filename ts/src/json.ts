@@ -44,10 +44,28 @@ function fail(detail: string): never {
 
 const WHITESPACE = new Set([" ", "\t", "\n", "\r"]);
 
+/**
+ * Containers nest at most this deeply. A repository value needs nine levels,
+ * so this is generous, and it keeps a hostile document from exhausting the
+ * stack: §10 makes malformed input an expected failure that exits 1, and an
+ * uncaught RangeError would exit 2 instead.
+ */
+const MAX_DEPTH = 200;
+
 class Reader {
   private index = 0;
+  private depth = 0;
 
   constructor(private readonly text: string) {}
+
+  private enter(): void {
+    this.depth += 1;
+    if (this.depth > MAX_DEPTH) fail("nesting is too deep");
+  }
+
+  private leave(): void {
+    this.depth -= 1;
+  }
 
   parse(): JsonValue {
     this.skipWhitespace();
@@ -103,11 +121,13 @@ class Reader {
   }
 
   private readObject(): JsonObject {
+    this.enter();
     this.expect("{");
     const entries = new Map<string, JsonValue>();
     this.skipWhitespace();
     if (this.peek() === "}") {
       this.index += 1;
+      this.leave();
       return { kind: "object", entries };
     }
     for (;;) {
@@ -126,6 +146,7 @@ class Reader {
       }
       if (next === "}") {
         this.index += 1;
+        this.leave();
         return { kind: "object", entries };
       }
       fail("expected , or } in object");
@@ -133,11 +154,13 @@ class Reader {
   }
 
   private readArray(): JsonValue[] {
+    this.enter();
     this.expect("[");
     const items: JsonValue[] = [];
     this.skipWhitespace();
     if (this.peek() === "]") {
       this.index += 1;
+      this.leave();
       return items;
     }
     for (;;) {
@@ -151,6 +174,7 @@ class Reader {
       }
       if (next === "]") {
         this.index += 1;
+        this.leave();
         return items;
       }
       fail("expected , or ] in array");
@@ -244,17 +268,6 @@ export function parseJson(text: string): JsonValue {
  * are rejected even though their values are integral, because §4.1 makes
  * non-integer numbers an error and the spelling is the only evidence.
  */
-export function asInteger(value: JsonValue, what: string): number {
-  if (!isJsonNumber(value)) throw new SnapError(what + " must be an integer");
-  if (!/^-?(?:0|[1-9][0-9]*)$/.test(value.source)) {
-    throw new SnapError(what + " must be an integer");
-  }
-  if (!Number.isSafeInteger(value.value)) {
-    throw new SnapError(what + " must be a positive safe integer");
-  }
-  return value.value;
-}
-
 export function asPositiveInteger(value: JsonValue, what: string): number {
   const message = what + " must be a positive safe integer";
   if (!isJsonNumber(value)) throw new SnapError(message);
