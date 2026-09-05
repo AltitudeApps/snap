@@ -23,11 +23,14 @@ export function installTree(root: string, current: Tree, target: Tree): void {
     if (!target.has(path)) rmSync(resolve(root, path), { force: true });
   }
 
-  // Longest paths first, so a directory is only considered for pruning after
-  // everything beneath it has been resolved.
+  // Deterministic order for reproducible filesystem effects; pruning happens
+  // once at the end, after every target file exists.
   for (const path of [...target.keys()].sort(compareBytes)) {
     const absolute = resolve(root, path);
     clearBlockingFiles(root, path);
+    if (exists(absolute) && statSync(absolute).isDirectory()) {
+      rmSync(absolute, { recursive: true, force: true });
+    }
     mkdirSync(dirname(absolute), { recursive: true });
     writeFileSync(absolute, target.get(path) as Uint8Array);
   }

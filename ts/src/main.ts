@@ -6,6 +6,7 @@ import { diff } from "./commands/diff.js";
 import { init } from "./commands/init.js";
 import { log } from "./commands/log.js";
 import { merge } from "./commands/merge.js";
+import { revert } from "./commands/revert.js";
 import { status } from "./commands/status.js";
 import {
   PLAIN,
@@ -48,6 +49,8 @@ function execute(command: Command, cwd: string): CommandResult {
       return { output: diff(cwd, command.compare), warnings: [] };
     case "merge":
       return merge(cwd, command.repository);
+    case "revert":
+      return { output: revert(cwd, env, command.version), warnings: [] };
     default:
       notImplemented(command);
   }
