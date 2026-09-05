@@ -1,6 +1,11 @@
 import { parseArguments, type Command } from "./cli.js";
 import { EXIT_EXPECTED, EXIT_INTERNAL, EXIT_SUCCESS, SnapError } from "./errors.js";
+import { commit } from "./commands/commit.js";
+import { config } from "./commands/config.js";
+import { diff } from "./commands/diff.js";
 import { init } from "./commands/init.js";
+import { log } from "./commands/log.js";
+import { status } from "./commands/status.js";
 import {
   PLAIN,
   renderError,
@@ -24,11 +29,22 @@ function notImplemented(command: Command): never {
 }
 
 function execute(command: Command, cwd: string): CommandResult {
+  const env = process.env;
   switch (command.name) {
     case "toolVersion":
       return { output: { kind: "toolVersion", semver: SEMVER }, warnings: [] };
     case "init":
       return { output: init(cwd, command.path), warnings: [] };
+    case "config":
+      return { output: config(cwd, env, command.global, command.id), warnings: [] };
+    case "status":
+      return { output: status(cwd), warnings: [] };
+    case "log":
+      return { output: log(cwd), warnings: [] };
+    case "commit":
+      return { output: commit(cwd, env, command.message), warnings: [] };
+    case "diff":
+      return { output: diff(cwd, command.compare), warnings: [] };
     default:
       notImplemented(command);
   }
