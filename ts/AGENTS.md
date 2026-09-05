@@ -13,11 +13,17 @@ npm start -- <arguments>         # run the CLI
 ./snap <arguments>               # executable used by the public harness
 ```
 
-The scaffold contains no private language-specific test suite. Run the packaged
-language-neutral verifier from the repository root:
+Run the packaged language-neutral verifier from the repository root:
 
 ```bash
-./capstones/snap/verify --lang ts
+./verify --lang ts
+```
+
+The unit and property tests SPEC.md §11 requires beyond the shared harness
+live beside the source as `*.test.ts`:
+
+```bash
+npm test
 ```
 
 Production code should use Node built-ins; `tsx`, TypeScript, and Node typings
