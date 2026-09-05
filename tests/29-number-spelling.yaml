@@ -1,0 +1,107 @@
+format: 1
+name: repository numbers must be spelled as integers not merely valued as integers
+description: >
+  SPEC.md §4.1 makes non-integer numbers an error. A reader that parses JSON
+  into a floating-point type cannot distinguish 1.0 from 1 by value, so the
+  spelling is normative and this case pins it. Without it, two conforming
+  implementations could disagree on whether the same repository is readable.
+steps:
+  - run:
+      args: [init, repo]
+      expect: [{type: exit_code, value: 0}]
+
+  # A patch revision written with a fraction, though its value is integral.
+  - write_file:
+      path: repo/.snap/repository.json
+      text: |
+        {
+          "format": 1,
+          "frontier": [["a@x", 1]],
+          "patches": [
+            {
+              "author": "a@x", "revision": 1.0, "base": [], "message": "m",
+              "changes": [{"type": "text", "path": "f", "edit": [{"insert": ["x\n"]}]}]
+            }
+          ]
+        }
+  - run:
+      cwd: repo
+      args: [status]
+      expect: &rejected
+        - {type: exit_code, value: 1}
+        - {type: stdout_equals, value: ""}
+        - {type: stderr_matches, pattern: '^snap: .+\n$'}
+
+  # The same value written in scientific notation.
+  - write_file:
+      path: repo/.snap/repository.json
+      text: |
+        {
+          "format": 1,
+          "frontier": [["a@x", 1]],
+          "patches": [
+            {
+              "author": "a@x", "revision": 1e0, "base": [], "message": "m",
+              "changes": [{"type": "text", "path": "f", "edit": [{"insert": ["x\n"]}]}]
+            }
+          ]
+        }
+  - run: {cwd: repo, args: [status], expect: *rejected}
+
+  # A frontier revision, on the same rule.
+  - write_file:
+      path: repo/.snap/repository.json
+      text: |
+        {
+          "format": 1,
+          "frontier": [["a@x", 1.0]],
+          "patches": [
+            {
+              "author": "a@x", "revision": 1, "base": [], "message": "m",
+              "changes": [{"type": "text", "path": "f", "edit": [{"insert": ["x\n"]}]}]
+            }
+          ]
+        }
+  - run: {cwd: repo, args: [status], expect: *rejected}
+
+  # An edit-script count, on the same rule.
+  - write_file:
+      path: repo/.snap/repository.json
+      text: |
+        {
+          "format": 1,
+          "frontier": [["a@x", 1]],
+          "patches": [
+            {
+              "author": "a@x", "revision": 1, "base": [], "message": "m",
+              "changes": [{"type": "text", "path": "f", "edit": [{"insert": ["x\n"]}]}]
+            },
+            {
+              "author": "a@x", "revision": 2, "base": [["a@x", 1]], "message": "n",
+              "changes": [{"type": "text", "path": "f", "edit": [{"retain": 1.0}]}]
+            }
+          ]
+        }
+  - run: {cwd: repo, args: [status], expect: *rejected}
+
+  # The control: spelled as an integer, the same repository reads normally.
+  - write_file:
+      path: repo/.snap/repository.json
+      text: |
+        {
+          "format": 1,
+          "frontier": [["a@x", 1]],
+          "patches": [
+            {
+              "author": "a@x", "revision": 1, "base": [], "message": "m",
+              "changes": [{"type": "text", "path": "f", "edit": [{"insert": ["x\n"]}]}]
+            }
+          ]
+        }
+  - run:
+      cwd: repo
+      args: [status]
+      expect:
+        - {type: exit_code, value: 0}
+        - {type: stdout_equals, value: "version (a@x->1)\nD f\n"}
+        - {type: stderr_equals, value: ""}

@@ -325,31 +325,41 @@ Cheap, parallel, and blocking other work — run these first:
 4. Never let a subagent edit implementation code. Findings come back as text;
    the fix is made once, by one hand.
 
-## 7. Open questions
+## 7. Open questions, as resolved
 
-To be resolved against the acceptance suite rather than by guesswork, before the
-affected milestone begins.
+All three are settled. Two dissolved on closer analysis rather than being
+decided, and only one was a genuine defect in the spec.
 
-1. ~~**Is `1.0` a non-integer?**~~ **Resolved at M2: not pinned; rejecting.**
-   A recon pass over test 23 found the suite silent on the question. Its only
-   decimal literal is `1.5`, whose *value* is non-integral, so it never
-   exercises the integral-value/non-integer-spelling case at all; no `N.0`,
-   scientific-notation or `-0` literal appears anywhere in the file. Snap
-   therefore rejects `1.0` and `1e2` by inspecting the raw numeric token, on
-   the reading that §4.1's "non-integer numbers" refers to spelling, since the
-   parsed value carries no other evidence. Nothing in the suite depends on the
-   choice either way.
-2. ~~**§6.2 rule 3 requires `B`, `C` and `T` to all be text.**~~ **Resolved at
-   M3: not pinned; falling through to §6.4.** Tests 10 and 22 never construct a
-   text-ness mismatch between `B`, `C` and `T` — test 22 and test 18 are
-   entirely text, and test 10's binary cases differ in `C` or `T`, never in `B`
-   alone. A binary base with text current and target content therefore reaches
-   §6.4 rule 6 (`put-wins`) by choice rather than by demonstration.
-3. ~~**Aggregate context edit scope.**~~ **Resolved at M3: not pinned; per
-   path.** Test 18 touches exactly one path (`story.txt`) in every branch and
-   every association order, so a tree-wide reading of `Q = diff(B, C)` and a
-   per-path one necessarily coincide there. Test 22 is likewise single-path.
-   Snap computes `Q` over the token sequences of the one path being resolved.
+1. **Is `1.0` a non-integer?** **A real ambiguity in §4.1, now fixed in the
+   spec.** The suite does not pin it: test 23's only decimal literal is `1.5`,
+   whose value is non-integral, so it never exercises the
+   integral-value/non-integer-spelling case. Following
+   [`AGENTS.md`](AGENTS.md)'s instruction to correct the spec when
+   implementation reveals an ambiguity, §4.1 now states that a number is an
+   integer only when spelled as one, with the reason: a reader that parses
+   JSON into a single floating-point type cannot recover the distinction from
+   the value, so two implementations could otherwise disagree about whether
+   the same repository is readable. [`tests/29-number-spelling.yaml`](tests/29-number-spelling.yaml)
+   pins it publicly, covering a patch revision, a frontier revision and an
+   edit-script count, with a spelled-integer control.
+
+2. **Does §6.2 rule 3 need `B` to be text?** **Vacuous, not merely untested.**
+   Rule 3 requires both that `B`, `C` and `T` are text and that `P` is a text
+   change, and those conditions are not independent: §4.5 rejects a text edit
+   whose exact base is not text, so `P` being a text change already implies
+   `B` is text or absent. When `P` is a `put`, rule 3 fails on `P` before `B`
+   is consulted. The guard on `B` is therefore not load-bearing and no choice
+   about it is observable. `ts/src/integration.test.ts` establishes this by
+   constructing the unreachable case by hand and confirming validation refuses
+   it.
+
+3. **Aggregate context edit scope.** **The alternative was not well formed.**
+   §5 defines `diff` only over token sequences, so a tree-wide `diff(B, C)`
+   has no meaning to invoke. "Aggregate" in §6.2 aggregates over *history* —
+   the sentence "Snap performs this transform once against the aggregate
+   context edit, not once per historical patch" says so directly — not over
+   paths. Recorded here because the question was asked and answered, not
+   because a choice was made.
 
 ## 8. Housekeeping
 

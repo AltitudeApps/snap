@@ -191,7 +191,14 @@ typed value—not its serialized bytes—is authoritative. Writers SHOULD use
 two-space indentation and a trailing LF so repositories remain pleasant to
 inspect.
 
-Unknown fields, non-integer numbers, and invalid typed values are errors.
+Unknown fields, non-integer numbers, and invalid typed values are errors. A
+number is an integer only when it is **spelled** as one: an optional `-`
+followed by digits, with neither a fraction nor an exponent. `1.0` and `1e2`
+are therefore errors even though their values are integral. The spelling is
+normative because a reader that parses JSON into a single floating-point type
+cannot recover the distinction from the value, and two implementations must
+not disagree about whether the same repository is readable.
+
 `patches` contains exactly the causal closure of `frontier`, sorted by author
 and then numeric revision, with no unreachable patches.
 
@@ -738,7 +745,8 @@ snap: <detail>
 Acceptance coverage must include:
 
 1. canonical version parsing, four-way comparison, Snap order, and join laws;
-2. JSON schema, closure, cycle, gap, dot-collision, path, and patch validation;
+2. JSON schema, closure, cycle, gap, dot-collision, path, patch, and
+   number-spelling validation;
 3. golden canonical diffs, especially repeated lines and deletion ties;
 4. every pairwise OT case and at least three concurrent text patches;
 5. every path-level winner rule, identical no-warning outcomes, namespace
