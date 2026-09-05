@@ -1,43 +1,24 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { SnapError } from "../errors.js";
 import { installTree } from "../install.js";
 import type { Output } from "../presentation.js";
 import {
   dotOf,
-  parseRepository,
   serializeRepository,
   type Patch,
   type Repository,
 } from "../repository.js";
-import { replay, replayDetailed, type Warning } from "../replay.js";
+import { readOperandRepository } from "../http.js";
+import { replayDetailed, type Warning } from "../replay.js";
 import { compareBytes } from "../bytes.js";
 import { formatVersion, join } from "../version.js";
 import { isClean } from "../worktree.js";
 import { validateRepository } from "../validate.js";
 import {
-  REPOSITORY_FILE,
   locateWorkspace,
   readRepository,
   scanWorkingTree,
   writeRepository,
 } from "../workspace.js";
-import { METADATA_DIRECTORY } from "../tree.js";
-
-/** Reads and validates another repository named by a local path operand. */
-export function readLocalRepository(cwd: string, operand: string): Repository {
-  const path = resolve(cwd, operand, METADATA_DIRECTORY, REPOSITORY_FILE);
-  let text: string;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch {
-    throw new SnapError("not a Snap repository: " + operand);
-  }
-  const repository = parseRepository(text);
-  validateRepository(repository);
-  return repository;
-}
 
 /**
  * §3.5 and §4.2. Patches sharing a dot are duplicates only when their parsed
@@ -52,20 +33,30 @@ function serializePatch(patch: Patch): string {
   return serializeRepository({ frontier: new Map(), patches: [patch] });
 }
 
-export function unionPatches(local: Repository, other: Repository): Patch[] {
+/**
+ * §3.5. Every dot present in both repositories must carry structurally equal
+ * patches. A differing value at one dot is corruption, not a merge conflict,
+ * and Snap cannot repair it automatically.
+ */
+export function requireCompatibleHistories(local: Repository, other: Repository): void {
   const byDot = new Map<string, Patch>();
   for (const patch of local.patches) byDot.set(dotOf(patch), patch);
   for (const patch of other.patches) {
     const existing = byDot.get(dotOf(patch));
-    if (existing !== undefined) {
-      if (!samePatch(existing, patch)) {
-        throw new SnapError(
-          "patch collision: " + patch.author + " revision " + String(patch.revision),
-        );
-      }
-      continue;
+    if (existing !== undefined && !samePatch(existing, patch)) {
+      throw new SnapError(
+        "patch collision: " + patch.author + " revision " + String(patch.revision),
+      );
     }
-    byDot.set(dotOf(patch), patch);
+  }
+}
+
+export function unionPatches(local: Repository, other: Repository): Patch[] {
+  requireCompatibleHistories(local, other);
+  const byDot = new Map<string, Patch>();
+  for (const patch of local.patches) byDot.set(dotOf(patch), patch);
+  for (const patch of other.patches) {
+    if (!byDot.has(dotOf(patch))) byDot.set(dotOf(patch), patch);
   }
   return [...byDot.values()].sort(
     (left, right) =>
@@ -83,10 +74,13 @@ function warningKey(warning: Warning): string {
  * and creates no patch. Only warnings absent from the pre-merge local replay
  * are printed (§6.4).
  */
-export function merge(cwd: string, operand: string): { output: Output; warnings: string[] } {
+export async function merge(
+  cwd: string,
+  operand: string,
+): Promise<{ output: Output; warnings: string[] }> {
   const workspace = locateWorkspace(cwd);
   const local = readRepository(workspace);
-  const other = readLocalRepository(cwd, operand);
+  const other = await readOperandRepository(cwd, operand);
 
   const before = replayDetailed(local, local.frontier);
   const working = scanWorkingTree(workspace.root);
@@ -114,5 +108,3 @@ export function merge(cwd: string, operand: string): { output: Output; warnings:
     warnings,
   };
 }
-
-export { replay };

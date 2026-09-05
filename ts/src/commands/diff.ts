@@ -2,6 +2,8 @@ import { compareBytes } from "../bytes.js";
 import type { DiffCompare } from "../cli.js";
 import type { Output } from "../presentation.js";
 import { replay, requireKnownVersion } from "../replay.js";
+import { readOperandRepository } from "../http.js";
+import { requireCompatibleHistories } from "./merge.js";
 import { asText, diffTokens, isDelete, isInsert, isRetain, tokenize } from "../text.js";
 import type { Tree } from "../tree.js";
 import { parseVersion } from "../version.js";
@@ -98,7 +100,10 @@ export function renderTreeDiff(from: Tree, to: Tree): string[] {
  * §7.6. With no arguments, compares the current tree with the working tree;
  * with two versions, compares two locally known versions.
  */
-export function diff(cwd: string, compare: DiffCompare | undefined): Output {
+export async function diff(
+  cwd: string,
+  compare: DiffCompare | undefined,
+): Promise<Output> {
   const workspace = locateWorkspace(cwd);
   const repository = readRepository(workspace);
 
@@ -111,13 +116,18 @@ export function diff(cwd: string, compare: DiffCompare | undefined): Output {
   const oldVersion = parseVersion(compare.old);
   const newVersion = parseVersion(compare.new);
   requireKnownVersion(repository, oldVersion);
-  requireKnownVersion(repository, newVersion);
+
+  // §7.6. `old` resolves locally and `new` in the other repository, which is
+  // never imported. Every repository and version is validated before output.
+  const source =
+    compare.repository === undefined
+      ? repository
+      : await readOperandRepository(cwd, compare.repository);
+  if (source !== repository) requireCompatibleHistories(repository, source);
+  requireKnownVersion(source, newVersion);
 
   return {
     kind: "diff",
-    lines: renderTreeDiff(
-      replay(repository, oldVersion),
-      replay(repository, newVersion),
-    ),
+    lines: renderTreeDiff(replay(repository, oldVersion), replay(source, newVersion)),
   };
 }

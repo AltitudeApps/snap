@@ -7,6 +7,7 @@ import { init } from "./commands/init.js";
 import { log } from "./commands/log.js";
 import { merge } from "./commands/merge.js";
 import { revert } from "./commands/revert.js";
+import { serve } from "./commands/serve.js";
 import { status } from "./commands/status.js";
 import {
   PLAIN,
@@ -30,7 +31,7 @@ function notImplemented(command: Command): never {
   throw new SnapError("not implemented: " + command.name);
 }
 
-function execute(command: Command, cwd: string): CommandResult {
+async function execute(command: Command, cwd: string): Promise<CommandResult> {
   const env = process.env;
   switch (command.name) {
     case "toolVersion":
@@ -46,11 +47,13 @@ function execute(command: Command, cwd: string): CommandResult {
     case "commit":
       return { output: commit(cwd, env, command.message), warnings: [] };
     case "diff":
-      return { output: diff(cwd, command.compare), warnings: [] };
+      return { output: await diff(cwd, command.compare), warnings: [] };
     case "merge":
-      return merge(cwd, command.repository);
+      return await merge(cwd, command.repository);
     case "revert":
       return { output: revert(cwd, env, command.version), warnings: [] };
+    case "serve":
+      return { output: await serve(cwd, command.port), warnings: [] };
     default:
       notImplemented(command);
   }
@@ -60,7 +63,7 @@ function write(stream: NodeJS.WriteStream, text: string): void {
   if (text.length > 0) stream.write(text);
 }
 
-export function run(argv: readonly string[], cwd: string): number {
+export async function run(argv: readonly string[], cwd: string): Promise<number> {
   // Presentation is resolved before the command runs, and its own error is
   // plain because no valid presentation was selected (§7.11).
   let presentation: Presentation;
@@ -78,7 +81,7 @@ export function run(argv: readonly string[], cwd: string): number {
   }
 
   try {
-    const result = execute(parseArguments(argv), cwd);
+    const result = await execute(parseArguments(argv), cwd);
     for (const warning of result.warnings) {
       write(process.stderr, renderWarning(warning, presentation.stderr));
     }
@@ -95,4 +98,4 @@ export function run(argv: readonly string[], cwd: string): number {
   }
 }
 
-process.exitCode = run(process.argv.slice(2), process.cwd());
+process.exitCode = await run(process.argv.slice(2), process.cwd());
